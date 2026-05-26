@@ -4,7 +4,7 @@ This is an optional module for the Phoebus Olog electronic logbook service, see 
 
 ### How it works
 
-When a log entry is submitted, the module queries `GET {shift.url}/shift/{shift.type}`. If the returned shift has `status=Active`, a `Shift` property is attached to the log entry with the following attributes:
+When a log entry is submitted, the module queries `GET {shift.url}/shift/{shift.type}` for each configured shift type in order. For the first type that returns an active shift, a `Shift` property is attached to the log entry with the following attributes:
 
 - **Id** - the shift identifier
 - **Type** - the shift type name
@@ -54,11 +54,24 @@ The following environment variables (or Java system properties) configure the mo
 | Variable | System property | Default | Description |
 |---|---|---|---|
 | `SHIFT_URL` | `shift.url` | `http://localhost:8080/Shift/resources` | Shift service base URL |
-| `SHIFT_TYPE` | `shift.type` | `Operations` | Shift type to query |
+| `SHIFT_TYPE` | `shift.type` | `Operations` | Shift type(s) to query — comma-separated list, checked in order |
+| `SHIFT_CACHE_TTL` | `shift.cache.ttl` | `30` | Seconds to cache shift responses (0 to disable) |
+| `SHIFT_CONNECT_TIMEOUT` | `shift.connect.timeout` | `3000` | Connection timeout in milliseconds |
+| `SHIFT_READ_TIMEOUT` | `shift.read.timeout` | `5000` | Read timeout in milliseconds |
 | `SHIFT_USERNAME` | `shift.username` | *(none)* | HTTP Basic Auth username |
 | `SHIFT_PASSWORD` | `shift.password` | *(none)* | HTTP Basic Auth password |
+| `SHIFT_SSL_TRUST_ALL` | `shift.ssl.trust.all` | `false` | Accept any TLS certificate — dev/test only |
+| `SHIFT_SSL_TRUSTSTORE` | `shift.ssl.truststore` | *(none)* | Path to a custom JKS trust store file |
+| `SHIFT_SSL_TRUSTSTORE_PASSWORD` | `shift.ssl.truststore.password` | *(none)* | Password for the custom trust store |
 
 Set these in `docker-compose.yml` under the `olog` service's `environment` block, or pass them as `-D` flags when running the JAR directly.
+
+**Multiple shift types example** — check Operations first, fall back to Commissioning if no active Operations shift:
+
+```yaml
+environment:
+  SHIFT_TYPE: Operations,Commissioning
+```
 
 ### How injection works
 
