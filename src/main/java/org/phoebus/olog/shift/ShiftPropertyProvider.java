@@ -5,8 +5,8 @@ import org.phoebus.olog.entity.Attribute;
 import org.phoebus.olog.entity.Log;
 import org.phoebus.olog.entity.Property;
 import org.phoebus.olog.entity.preprocess.LogPropertyProvider;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.springframework.http.client.support.BasicAuthenticationInterceptor;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,10 +24,17 @@ import java.util.logging.Logger;
  *   <li>Owner - the shift owner</li>
  * </ul>
  *
+ * <p>Configuration is read from environment variables (preferred in Docker) or JVM system
+ * properties (-D flags): SHIFT_URL / shift.url, SHIFT_TYPE / shift.type,
+ * SHIFT_USERNAME / shift.username, SHIFT_PASSWORD / shift.password.
+ *
  * <p>If the shift service is unavailable or no active shift exists, no property is added.
+ *
+ * <p>Loaded via Java SPI ({@link java.util.ServiceLoader}) by phoebus-olog's PreProcessorConfig.
+ * Spring injection is not available in this loading path, so configuration is read directly
+ * from the environment.
  */
 @AutoService(LogPropertyProvider.class)
-@Component
 public class ShiftPropertyProvider implements LogPropertyProvider {
 
     public static final String PROPERTY_NAME = "Shift";
@@ -38,37 +45,65 @@ public class ShiftPropertyProvider implements LogPropertyProvider {
 
     private static final Logger logger = Logger.getLogger(ShiftPropertyProvider.class.getName());
 
-    @Autowired
-    private ShiftRestClient shiftRestClient;
+    private final String shiftUrl;
+    private final String defaultType;
+    private final RestTemplate restTemplate;
 
-    @Autowired
-    private ShiftPreferences preferences;
+    // No-arg constructor used by ServiceLoader in production.
+    public ShiftPropertyProvider() {
+        this(
+            resolve("SHIFT_URL", "shift.url", "http://localhost:8080/Shift/resources"),
+            resolve("SHIFT_TYPE", "shift.type", "Operations"),
+            buildRestTemplate(
+                resolve("SHIFT_USERNAME", "shift.username", ""),
+                resolve("SHIFT_PASSWORD", "shift.password", "")
+            )
+        );
+    }
+
+    // Package-private constructor for unit tests.
+    ShiftPropertyProvider(String shiftUrl, String defaultType, RestTemplate restTemplate) {
+        this.shiftUrl = shiftUrl;
+        this.defaultType = defaultType;
+        this.restTemplate = restTemplate;
+    }
+
+    private static String resolve(String envVar, String sysProp, String defaultValue) {
+        String env = System.getenv(envVar);
+        if (env != null && !env.isEmpty()) return env;
+        return System.getProperty(sysProp, defaultValue);
+    }
+
+    private static RestTemplate buildRestTemplate(String username, String password) {
+        RestTemplate rt = new RestTemplate();
+        if (!username.isEmpty()) {
+            rt.getInterceptors().add(new BasicAuthenticationInterceptor(username, password));
+        }
+        return rt;
+    }
 
     @Override
     public Property getProperty(Log log) {
         try {
-            String type = preferences.getDefaultType();
-            Shift shift = shiftRestClient.getLastOpenShift(type);
+            Shift shift = restTemplate.getForObject(shiftUrl + "/shift/" + defaultType, Shift.class);
 
             if (shift == null) {
-                logger.log(Level.INFO, "No shift returned from service for type: " + type);
+                logger.log(Level.INFO, "No shift returned from service for type: " + defaultType);
                 return null;
             }
 
             if (!"Active".equalsIgnoreCase(shift.getStatus())) {
-                logger.log(Level.INFO, "No active shift found for type: " + type + ", status: " + shift.getStatus());
+                logger.log(Level.INFO, "No active shift for type: " + defaultType + ", status: " + shift.getStatus());
                 return null;
             }
 
-            Property property = new Property(PROPERTY_NAME);
-
-            String typeName = (shift.getType() != null) ? shift.getType().getName() : type;
+            String typeName = (shift.getType() != null) ? shift.getType().getName() : defaultType;
             String shiftId = (shift.getId() != null) ? shift.getId().toString() : "";
-            String shiftUrl = preferences.getShiftUrl() + "/shift/" + typeName + "/" + shiftId;
 
+            Property property = new Property(PROPERTY_NAME);
             property.addAttributes(new Attribute(ATTR_ID, shiftId));
             property.addAttributes(new Attribute(ATTR_TYPE, typeName));
-            property.addAttributes(new Attribute(ATTR_URL, shiftUrl));
+            property.addAttributes(new Attribute(ATTR_URL, shiftUrl + "/shift/" + typeName + "/" + shiftId));
 
             if (shift.getOwner() != null) {
                 property.addAttributes(new Attribute(ATTR_OWNER, shift.getOwner()));
