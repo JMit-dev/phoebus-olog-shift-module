@@ -11,18 +11,16 @@ USER root
 
 COPY --from=module-build /build/target/olog-shift-module-*.jar /olog-target/shift-module.jar
 
-# Switch the fat JAR launcher from JarLauncher to PropertiesLauncher so that
-# loader.path is respected at startup, allowing the module JAR to be appended
-# to the classpath without rebuilding the olog JAR.
-# Uses the JDK jar tool (already present) — no extra packages needed.
-RUN OLOG_JAR=$(ls /olog-target/service-olog-*.jar) && \
-    mkdir -p /tmp/mf && cd /tmp/mf && \
-    jar xf "$OLOG_JAR" META-INF/MANIFEST.MF && \
-    sed -i 's/JarLauncher/PropertiesLauncher/g' META-INF/MANIFEST.MF && \
-    jar uf "$OLOG_JAR" META-INF/MANIFEST.MF && \
-    rm -rf /tmp/mf
+# Explode the fat JAR so the shift module can be added as a regular file in
+# BOOT-INF/lib/ rather than a nested-ZIP entry. Running in exploded mode avoids
+# classpath.idx and nested-URL issues introduced in Spring Boot 4.x.
+RUN mkdir -p /olog-app && \
+    cd /olog-app && \
+    jar xf /olog-target/service-olog-*.jar && \
+    cp /olog-target/shift-module.jar BOOT-INF/lib/ && \
+    echo '- "BOOT-INF/lib/shift-module.jar"' >> BOOT-INF/classpath.idx
 
 USER olog
-WORKDIR /olog-target
+WORKDIR /olog-app
 EXPOSE 8080 8181
-CMD java -Dloader.path=/olog-target/shift-module.jar -jar service-olog-*.jar
+CMD java org.springframework.boot.loader.launch.JarLauncher

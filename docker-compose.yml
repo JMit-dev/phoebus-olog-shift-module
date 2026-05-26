@@ -32,7 +32,7 @@ services:
       - olog-mongodata:/data/db
 
   elastic:
-    image: elasticsearch:8.2.3
+    image: elasticsearch:8.13.4
     environment:
       cluster.name: elasticsearch
       bootstrap.memory_lock: "true"
