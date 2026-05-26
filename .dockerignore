@@ -1,0 +1,4 @@
+EXAMPLES/
+target/
+.git/
+*.md
