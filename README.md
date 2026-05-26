@@ -13,28 +13,53 @@ When a log entry is submitted, the module queries `GET {shift.url}/shift/{shift.
 
 If the shift service is unavailable or no active shift exists, no property is added and the log entry is saved normally.
 
+### Running with Docker
+
+The included `Dockerfile` and `docker-compose.yml` provide a complete stack:
+
+```bash
+docker compose up -d
+```
+
+This starts four services:
+
+| Service | Description | Port |
+|---|---|---|
+| `olog` | phoebus-olog with shift module injected | 8080 (HTTP), 8181 (HTTPS) |
+| `shift-mock` | WireMock stub serving a fake active shift | 8282 |
+| `mongo` | MongoDB (log attachment storage) | 27017 |
+| `elastic` | Elasticsearch (log index) | 9200 |
+
+Once running, create a log entry:
+
+```bash
+curl --insecure --request PUT 'https://localhost:8181/Olog/logs' \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Basic YWRtaW46YWRtaW5QYXNz' \
+  --data '{
+    "owner": "test",
+    "source": "test entry",
+    "title": "My Log",
+    "level": "Info",
+    "logbooks": [{"name": "operations", "owner": "olog-logs"}]
+  }'
+```
+
+The response will include a `Shift` property automatically attached from the active shift.
+
 ### Configuration
 
-#### Add to service-olog pom.xml:
+The following environment variables (or Java system properties) configure the module at runtime:
 
-```xml
-<dependency>
-    <groupId>org.phoebus</groupId>
-    <artifactId>olog-shift-module</artifactId>
-    <version>1.0-SNAPSHOT</version>
-</dependency>
-```
+| Variable | System property | Default | Description |
+|---|---|---|---|
+| `SHIFT_URL` | `shift.url` | `http://localhost:8080/Shift/resources` | Shift service base URL |
+| `SHIFT_TYPE` | `shift.type` | `Operations` | Shift type to query |
+| `SHIFT_USERNAME` | `shift.username` | *(none)* | HTTP Basic Auth username |
+| `SHIFT_PASSWORD` | `shift.password` | *(none)* | HTTP Basic Auth password |
 
-#### Add to olog application.properties:
+Set these in `docker-compose.yml` under the `olog` service's `environment` block, or pass them as `-D` flags when running the JAR directly.
 
-```properties
-# URL of the shift service REST API (required)
-shift.url=http://localhost:8080/Shift/resources
+### How injection works
 
-# Shift type to look up when attaching to log entries
-shift.type=Operations
-
-# Optional HTTP Basic Auth credentials for the shift service
-# shift.username=
-# shift.password=
-```
+The `Dockerfile` builds the module JAR, then extracts the phoebus-olog fat JAR into a plain directory, copies `shift-module.jar` into `BOOT-INF/lib/`, and appends it to `BOOT-INF/classpath.idx`. Spring Boot's `JarLauncher` is then invoked directly so all `BOOT-INF/lib/` entries are regular `file://` URLs — this is required for Java's `ServiceLoader` to discover the `LogPropertyProvider` SPI registered by the module.
