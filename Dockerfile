@@ -9,19 +9,17 @@ RUN mvn clean package -DskipTests
 FROM ghcr.io/olog/org-phoebus-service-olog:latest
 USER root
 
-RUN apt-get update && apt-get install -y --no-install-recommends unzip zip && \
-    rm -rf /var/lib/apt/lists/*
-
 COPY --from=module-build /build/target/olog-shift-module-*.jar /olog-target/shift-module.jar
 
 # Switch the fat JAR launcher from JarLauncher to PropertiesLauncher so that
 # loader.path is respected at startup, allowing the module JAR to be appended
 # to the classpath without rebuilding the olog JAR.
+# Uses the JDK jar tool (already present) — no extra packages needed.
 RUN OLOG_JAR=$(ls /olog-target/service-olog-*.jar) && \
     mkdir -p /tmp/mf && cd /tmp/mf && \
-    unzip -q "$OLOG_JAR" META-INF/MANIFEST.MF && \
+    jar xf "$OLOG_JAR" META-INF/MANIFEST.MF && \
     sed -i 's/JarLauncher/PropertiesLauncher/g' META-INF/MANIFEST.MF && \
-    zip -u "$OLOG_JAR" META-INF/MANIFEST.MF && \
+    jar uf "$OLOG_JAR" META-INF/MANIFEST.MF && \
     rm -rf /tmp/mf
 
 USER olog
