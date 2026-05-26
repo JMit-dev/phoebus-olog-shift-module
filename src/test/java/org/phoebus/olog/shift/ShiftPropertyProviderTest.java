@@ -5,60 +5,48 @@ import org.junit.jupiter.api.Test;
 import org.phoebus.olog.entity.Attribute;
 import org.phoebus.olog.entity.Log;
 import org.phoebus.olog.entity.Property;
-
-import java.util.Optional;
+import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ShiftPropertyProviderTest {
 
-    private ShiftRestClient mockShiftRestClient;
-    private ShiftPreferences mockPreferences;
+    private static final String SHIFT_URL = "http://localhost:8080/Shift/resources";
+    private static final String SHIFT_TYPE = "Operations";
+
+    private RestTemplate mockRestTemplate;
     private ShiftPropertyProvider provider;
 
     @BeforeEach
     void setUp() {
-        mockShiftRestClient = mock(ShiftRestClient.class);
-        mockPreferences = mock(ShiftPreferences.class);
-
-        provider = new ShiftPropertyProvider();
-        // inject mocks via reflection since Spring isn't running
-        setField(provider, "shiftRestClient", mockShiftRestClient);
-        setField(provider, "preferences", mockPreferences);
-
-        when(mockPreferences.getDefaultType()).thenReturn("Operations");
-        when(mockPreferences.getShiftUrl()).thenReturn("http://localhost:8080/Shift/resources");
+        mockRestTemplate = mock(RestTemplate.class);
+        provider = new ShiftPropertyProvider(SHIFT_URL, SHIFT_TYPE, mockRestTemplate);
     }
 
     @Test
     void testGetPropertyWithActiveShift() {
+        ShiftType type = new ShiftType();
+        type.setId(1);
+        type.setName("Operations");
+
         Shift shift = new Shift();
         shift.setId(42);
         shift.setStatus("Active");
         shift.setOwner("jdoe");
-        ShiftType type = new ShiftType();
-        type.setId(1);
-        type.setName("Operations");
         shift.setType(type);
 
-        when(mockShiftRestClient.getLastOpenShift("Operations")).thenReturn(shift);
+        when(mockRestTemplate.getForObject(SHIFT_URL + "/shift/" + SHIFT_TYPE, Shift.class))
+                .thenReturn(shift);
 
-        Log mockLog = mock(Log.class);
-        Property property = provider.getProperty(mockLog);
+        Property property = provider.getProperty(mock(Log.class));
 
         assertNotNull(property);
         assertEquals("Shift", property.getName());
-
-        String id = getAttributeValue(property, "Id");
-        String typeName = getAttributeValue(property, "Type");
-        String url = getAttributeValue(property, "URL");
-        String owner = getAttributeValue(property, "Owner");
-
-        assertEquals("42", id);
-        assertEquals("Operations", typeName);
-        assertEquals("http://localhost:8080/Shift/resources/shift/Operations/42", url);
-        assertEquals("jdoe", owner);
+        assertEquals("42", attr(property, "Id"));
+        assertEquals("Operations", attr(property, "Type"));
+        assertEquals(SHIFT_URL + "/shift/Operations/42", attr(property, "URL"));
+        assertEquals("jdoe", attr(property, "Owner"));
     }
 
     @Test
@@ -67,33 +55,26 @@ class ShiftPropertyProviderTest {
         shift.setId(10);
         shift.setStatus("Closed");
 
-        when(mockShiftRestClient.getLastOpenShift("Operations")).thenReturn(shift);
+        when(mockRestTemplate.getForObject(SHIFT_URL + "/shift/" + SHIFT_TYPE, Shift.class))
+                .thenReturn(shift);
 
-        Log mockLog = mock(Log.class);
-        Property property = provider.getProperty(mockLog);
-
-        assertNull(property);
+        assertNull(provider.getProperty(mock(Log.class)));
     }
 
     @Test
     void testGetPropertyWhenServiceReturnsNull() {
-        when(mockShiftRestClient.getLastOpenShift("Operations")).thenReturn(null);
+        when(mockRestTemplate.getForObject(SHIFT_URL + "/shift/" + SHIFT_TYPE, Shift.class))
+                .thenReturn(null);
 
-        Log mockLog = mock(Log.class);
-        Property property = provider.getProperty(mockLog);
-
-        assertNull(property);
+        assertNull(provider.getProperty(mock(Log.class)));
     }
 
     @Test
     void testGetPropertyWhenServiceThrowsException() {
-        when(mockShiftRestClient.getLastOpenShift("Operations"))
+        when(mockRestTemplate.getForObject(SHIFT_URL + "/shift/" + SHIFT_TYPE, Shift.class))
                 .thenThrow(new RuntimeException("Connection refused"));
 
-        Log mockLog = mock(Log.class);
-        Property property = provider.getProperty(mockLog);
-
-        assertNull(property);
+        assertNull(provider.getProperty(mock(Log.class)));
     }
 
     @Test
@@ -103,30 +84,20 @@ class ShiftPropertyProviderTest {
         shift.setStatus("Active");
         shift.setType(null);
 
-        when(mockShiftRestClient.getLastOpenShift("Operations")).thenReturn(shift);
+        when(mockRestTemplate.getForObject(SHIFT_URL + "/shift/" + SHIFT_TYPE, Shift.class))
+                .thenReturn(shift);
 
-        Log mockLog = mock(Log.class);
-        Property property = provider.getProperty(mockLog);
+        Property property = provider.getProperty(mock(Log.class));
 
         assertNotNull(property);
-        assertEquals("Operations", getAttributeValue(property, "Type"));
+        assertEquals("Operations", attr(property, "Type"));
     }
 
-    private String getAttributeValue(Property property, String attributeName) {
+    private String attr(Property property, String name) {
         return property.getAttributes().stream()
-                .filter(a -> attributeName.equals(a.getName()))
+                .filter(a -> name.equals(a.getName()))
                 .map(Attribute::getValue)
                 .findFirst()
                 .orElse(null);
-    }
-
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            var field = target.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set field " + fieldName, e);
-        }
     }
 }
