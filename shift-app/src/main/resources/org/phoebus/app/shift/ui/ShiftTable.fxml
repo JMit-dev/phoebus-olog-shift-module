@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.phoebus.app.shift.ui.ShiftTableController"
+            prefWidth="800" prefHeight="500">
+
+    <top>
+        <VBox>
+            <ToolBar>
+                <Button text="Refresh" onAction="#handleRefresh"/>
+                <Separator/>
+                <Button fx:id="startShiftBtn" text="Start Shift" onAction="#handleStartShift"/>
+                <Button fx:id="endShiftBtn"   text="End Shift"   onAction="#handleEndShift" disable="true"/>
+            </ToolBar>
+        </VBox>
+    </top>
+
+    <center>
+        <TableView fx:id="shiftTable" BorderPane.alignment="CENTER">
+            <columns>
+                <TableColumn fx:id="colId"      text="ID"         prefWidth="60"/>
+                <TableColumn fx:id="colType"     text="Type"       prefWidth="130"/>
+                <TableColumn fx:id="colStatus"   text="Status"     prefWidth="100"/>
+                <TableColumn fx:id="colOwner"    text="Owner"      prefWidth="130"/>
+                <TableColumn fx:id="colStart"    text="Start Date" prefWidth="180"/>
+            </columns>
+            <placeholder>
+                <Label text="No shifts found — click Refresh to load"/>
+            </placeholder>
+        </TableView>
+    </center>
+
+    <bottom>
+        <Label fx:id="statusLabel" style="-fx-padding: 4 8 4 8;">
+            <BorderPane.margin><Insets top="2" bottom="2"/></BorderPane.margin>
+        </Label>
+    </bottom>
+</BorderPane>
