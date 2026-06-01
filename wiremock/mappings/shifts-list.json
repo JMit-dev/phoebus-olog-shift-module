@@ -22,11 +22,20 @@
                     {
                         "id": 2,
                         "owner": "jdoe",
-                        "status": "Closed",
+                        "status": "Ended",
                         "type": { "id": 1, "name": "Operations" },
                         "startDate": "2026-05-25T09:00:00.000+0000",
                         "endDate": "2026-05-25T17:00:00.000+0000",
-                        "description": "Previous day shift"
+                        "description": "Yesterday morning shift"
+                    },
+                    {
+                        "id": 3,
+                        "owner": "alice",
+                        "status": "Closed",
+                        "type": { "id": 2, "name": "Safety" },
+                        "startDate": "2026-05-24T08:00:00.000+0000",
+                        "endDate": "2026-05-24T16:00:00.000+0000",
+                        "description": "Safety inspection shift"
                     }
                 ]
             }
