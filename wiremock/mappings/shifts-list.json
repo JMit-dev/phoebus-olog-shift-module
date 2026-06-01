@@ -3,7 +3,7 @@
         {
             "request": {
                 "method": "GET",
-                "url": "/Shift/resources/shifts"
+                "urlPattern": "/Shift/resources/shifts(\\?.*)?"
             },
             "response": {
                 "status": 200,
