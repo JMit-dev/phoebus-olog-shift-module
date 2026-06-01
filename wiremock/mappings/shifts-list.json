@@ -1,0 +1,35 @@
+{
+    "mappings": [
+        {
+            "request": {
+                "method": "GET",
+                "url": "/Shift/resources/shifts"
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "Content-Type": "application/json"
+                },
+                "jsonBody": [
+                    {
+                        "id": 1,
+                        "owner": "operator",
+                        "status": "Active",
+                        "type": { "id": 1, "name": "Operations" },
+                        "startDate": "2026-05-26T09:00:00.000+0000",
+                        "description": "Morning operations shift"
+                    },
+                    {
+                        "id": 2,
+                        "owner": "jdoe",
+                        "status": "Closed",
+                        "type": { "id": 1, "name": "Operations" },
+                        "startDate": "2026-05-25T09:00:00.000+0000",
+                        "endDate": "2026-05-25T17:00:00.000+0000",
+                        "description": "Previous day shift"
+                    }
+                ]
+            }
+        }
+    ]
+}

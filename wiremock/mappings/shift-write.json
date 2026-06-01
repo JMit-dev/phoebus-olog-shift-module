@@ -1,0 +1,64 @@
+{
+    "mappings": [
+        {
+            "request": {
+                "method": "POST",
+                "url": "/Shift/resources/shifts"
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "Content-Type": "application/json"
+                },
+                "jsonBody": {
+                    "id": 3,
+                    "owner": "operator",
+                    "status": "Active",
+                    "type": { "id": 1, "name": "Operations" },
+                    "startDate": "2026-06-01T09:00:00.000+0000",
+                    "description": "New shift"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "PUT",
+                "urlPattern": "/Shift/resources/shifts/[0-9]+/end"
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "Content-Type": "application/json"
+                },
+                "jsonBody": {
+                    "id": 1,
+                    "owner": "operator",
+                    "status": "Ended",
+                    "type": { "id": 1, "name": "Operations" },
+                    "startDate": "2026-06-01T09:00:00.000+0000",
+                    "endDate": "2026-06-01T17:00:00.000+0000"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "PUT",
+                "urlPattern": "/Shift/resources/shifts/[0-9]+/close"
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "Content-Type": "application/json"
+                },
+                "jsonBody": {
+                    "id": 1,
+                    "owner": "operator",
+                    "status": "Closed",
+                    "type": { "id": 1, "name": "Operations" },
+                    "startDate": "2026-06-01T09:00:00.000+0000",
+                    "endDate": "2026-06-01T17:00:00.000+0000"
+                }
+            }
+        }
+    ]
+}
